@@ -28,29 +28,20 @@ struct language {
 static const language languages[] = {
 	{
 		.tag = "c",
-		.opening = "",
-		.closing = "",
 		.compile = "gcc -include stdio.h -o %1$s.out %1$s",
 		.execute = "./%s.out"
 	},
 	{
 		.tag = "cpp",
-		.opening = "",
-		.closing = "",
 		.compile = "g++ -include stdio.h -include iostream -o %1$s.out %1$s",
 		.execute = "./%s.out"
 	},
 	{
 		.tag = "py",
-		.opening = "",
-		.closing = "",
-		.compile = "",
 		.execute = "python %s"
 	},
 	{
 		.tag = "rs",
-		.opening = "",
-		.closing = "",
 		.compile = "rustc -o %1$s.out --crate-name csp_rs %1$s",
 		.execute = "./%s.out"
 	}
@@ -89,7 +80,7 @@ static FILE * open_path(path& p, const char * s) {
 	return result;
 }
 
-// Check if `str` is the next sequence in a file. Returns true if the sring is
+// Check if `str` is the next sequence in a file. Returns true if the string is
 // found and passes over it.
 static bool matches_string(FILE * f, const char * str) {
 	int pos = ftell(f);
@@ -133,14 +124,14 @@ void compile_script(path& csp_path, path& outdir, FILE * out) {
 			{ // Extract the script from the CSP file.
 				FILE * script = open_path(outpath, "w");
 
-				fputs(lang->opening, script);
+				if (lang->opening) fputs(lang->opening, script);
 				while (!feof(csp)) {
 					if (matches_string(csp, "<?>")) break;
 					int next = fgetc(csp);
 					if (next == EOF) break;
 					fputc(next, script);
 				}
-				fputs(lang->closing, script);
+				if (lang->closing) fputs(lang->closing, script);
 				fclose(script);
 			}
 
