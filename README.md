@@ -18,6 +18,19 @@ languages can easily be added in under a minute.
 - Rust
 - Python
 
+# Tag modes
+
+Certain languages have additional options that can be used. For example, C, C++, and Rust, have the `main` mode.
+`main` places the user's code into a main function, rather than requiring them to write it themselves.
+
+These two are the same:
+```
+<?c> int main() { puts("I like writing..."); } <?>
+```
+```
+<?c main> puts("I wanna save time!"); <?>
+```
+
 # Adding a language
 Each language in the program is stored as a `language` structure within the
 `languages` array. For example:
