@@ -70,9 +70,5 @@ script file as the first and only input. This file will replace any instance of
 
 # Planned features
 
-- Language arguments
-	- For example, `<?c main>` could be used to insert a main function around
-	the user's code, turning `int main() {puts("Hello, world!");}` into simply
-	`puts("Hello, world!");`.
 - A library providing HTTPS capabilities, making CSP a viable alterntive to PHP.
 - Configurable tag syntax, to allow CSP to be used in more contexts.
