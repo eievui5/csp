@@ -19,7 +19,7 @@ rebuild:
 	$(MAKE) all
 
 test: all
-	./$(BIN) -i test/test.csp -o bin/test.html -d obj/
+	./$(BIN) -i test/test.csp -d obj/
 
 memcheck: all
 	valgrind --leak-check=full ./$(BIN) $(TESTFLAGS)

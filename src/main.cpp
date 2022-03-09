@@ -4,9 +4,13 @@
 #include <filesystem>
 #include <getopt.h>
 #include <stdio.h>
+#include <string>
 #include <string.h>
+#include <vector>
 
 using std::filesystem::path;
+using std::string;
+using std::vector;
 
 struct language {
 	// The tag associated with this language, usually the file extension.
@@ -23,18 +27,37 @@ struct language {
 	// This is formatted using printf, with the path of the generated script as
 	// the first and only argument.
 	const char * execute;
+	void (* mode_opening) (FILE * f, string mode);
+	void (* mode_closing) (FILE * f, string mode);
 };
+
+void c_mode_opening(FILE * f, string mode) {
+	if (mode == "main") fputs("int main() {\n", f);
+}
+void c_mode_closing(FILE * f, string mode) {
+	if (mode == "main") fputs("\n}\n", f);
+}
+void rs_mode_opening(FILE * f, string mode) {
+	if (mode == "main") fputs("fn main() {\n", f);
+}
+void rs_mode_closing(FILE * f, string mode) {
+	if (mode == "main") fputs("\n}\n", f);
+}
 
 static const language languages[] = {
 	{
 		.tag = "c",
 		.compile = "gcc -include stdio.h -o %1$s.out %1$s",
-		.execute = "./%s.out"
+		.execute = "./%s.out",
+		.mode_opening = &c_mode_opening,
+		.mode_closing = &c_mode_closing,
 	},
 	{
 		.tag = "cpp",
 		.compile = "g++ -include stdio.h -include iostream -o %1$s.out %1$s",
-		.execute = "./%s.out"
+		.execute = "./%s.out",
+		.mode_opening = &c_mode_opening,
+		.mode_closing = &c_mode_closing,
 	},
 	{
 		.tag = "py",
@@ -43,7 +66,9 @@ static const language languages[] = {
 	{
 		.tag = "rs",
 		.compile = "rustc -o %1$s.out --crate-name csp_rs %1$s",
-		.execute = "./%s.out"
+		.execute = "./%s.out",
+		.mode_opening = &rs_mode_opening,
+		.mode_closing = &rs_mode_closing,
 	}
 };
 
@@ -94,19 +119,31 @@ static bool matches_string(FILE * f, const char * str) {
 	return true;
 }
 
-static const language * get_lang(FILE * csp) {
-	char * tag = NULL;
-	size_t tag_cap = 0;
-	size_t tag_len = getdelim(&tag, &tag_cap, '>', csp);
-	tag[tag_len - 1] = 0;
+static int fgets_delims(string& result, FILE * f, const char * delims) {
+	while (1) {
+		int next = fgetc(f);
+		if (next == EOF) return EOF;
+		if (strchr(delims, next)) return next;
+		result += next;
+	}
+}
+
+static const language * get_lang(FILE * csp, vector<string>& modes) {
+	string tag;
+	if (fgets_delims(tag, csp, " >") == ' ') {
+		while (1) {
+			string new_mode;
+			int result = fgets_delims(new_mode, csp, " >");
+			modes.push_back(new_mode);
+			if (result != ' ') break;
+		}
+	}
 	for (size_t i = 0; i < sizeof(languages) / sizeof(*languages); i++) {
-		if (strcmp(languages[i].tag, tag) == 0) {
-			free(tag);
+		if (tag == languages[i].tag) {
 			return languages + i;
 		}
 	}
-	fprintf(stderr, "Unrecognized language tag: %s\n", tag);
-	free(tag);
+	error("Unrecognized language tag %s", tag.c_str());
 	return NULL;
 }
 
@@ -117,7 +154,8 @@ void compile_script(path& csp_path, path& outdir, FILE * out) {
 	while (!feof(csp)) {
 		if (matches_string(csp, "<?")) {
 			// Determine the language of this code block.
-			const language * lang = get_lang(csp);
+			vector<string> tag_modes;
+			const language * lang = get_lang(csp, tag_modes);
 			if (!lang) continue;
 			path outpath = outdir / csp_path.stem().replace_extension(lang->tag);
 
@@ -125,6 +163,7 @@ void compile_script(path& csp_path, path& outdir, FILE * out) {
 				FILE * script = open_path(outpath, "w");
 
 				if (lang->opening) fputs(lang->opening, script);
+				if (lang->mode_opening) for (auto& i : tag_modes) lang->mode_opening(script, i);
 				while (!feof(csp)) {
 					if (matches_string(csp, "<?>")) break;
 					int next = fgetc(csp);
@@ -132,6 +171,7 @@ void compile_script(path& csp_path, path& outdir, FILE * out) {
 					fputc(next, script);
 				}
 				if (lang->closing) fputs(lang->closing, script);
+				if (lang->mode_closing) for (auto& i : tag_modes) lang->mode_closing(script, i);
 				fclose(script);
 			}
 

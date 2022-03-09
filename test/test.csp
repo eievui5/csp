@@ -6,11 +6,11 @@
 </p>
 <p>
 	The following text was generated from C code:
-	<?c> int main() { puts("<a href=\"https://eievui.ml\">Hello, C!</a>"); } <?>
+	<?c main>puts("<a href=\"https://eievui.ml\">Hello, C!</a>");<?>
 </p>
 <p>
 	The following text was generated from C++ code:
-	<?cpp> int main() { std::cout << "<a href=\"https://eievui.ml\">Hello, C++!</a>"; } <?>
+	<?cpp main>std::cout << "<a href=\"https://eievui.ml\">Hello, C++!</a>";<?>
 </p>
 <p>
 	The following text was generated from Python code:
@@ -18,5 +18,9 @@
 </p>
 <p>
 	The following text was generated from Rust code:
-	<?rs> fn main() { println!("<a href=\"https://eievui.ml\">Hello, Rust!</a>"); } <?>
+	<?rs main>println!("<a href=\"https://eievui.ml\">Hello, Rust!</a>");<?>
+</p>
+<p>
+	The following text was generated from seperate C code:
+	<?c> int main() {puts("<a href=\"https://eievui.ml\">Hello again, C!</a>");}<?>
 </p>

@@ -57,10 +57,6 @@ script file as the first and only input. This file will replace any instance of
 
 # Planned features
 
-- Multiple scripts per file.
-	- Currently, only one script per language can exist in a file. This should
-	really be considered a bug, and allowing multiple scripts to be used is top
-	priority
 - Language arguments
 	- For example, `<?c main>` could be used to insert a main function around
 	the user's code, turning `int main() {puts("Hello, world!");}` into simply
