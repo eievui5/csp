@@ -18,6 +18,19 @@ languages can easily be added in under a minute.
 - Rust
 - Python
 
+# Tag modes
+
+Certain languages have additional options that can be used. For example, C, C++, and Rust, have the `main` mode.
+`main` places the user's code into a main function, rather than requiring them to write it themselves.
+
+These two are the same:
+```
+<?c> int main() { puts("I like writing..."); } <?>
+```
+```
+<?c main> puts("I wanna save time!"); <?>
+```
+
 # Adding a language
 Each language in the program is stored as a `language` structure within the
 `languages` array. For example:
@@ -57,9 +70,5 @@ script file as the first and only input. This file will replace any instance of
 
 # Planned features
 
-- Language arguments
-	- For example, `<?c main>` could be used to insert a main function around
-	the user's code, turning `int main() {puts("Hello, world!");}` into simply
-	`puts("Hello, world!");`.
 - A library providing HTTPS capabilities, making CSP a viable alterntive to PHP.
 - Configurable tag syntax, to allow CSP to be used in more contexts.
