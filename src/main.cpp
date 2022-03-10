@@ -27,6 +27,9 @@ struct language {
 	// This is formatted using printf, with the path of the generated script as
 	// the first and only argument.
 	const char * execute;
+	// The extension of the file produced and executed by the program. This is
+	// re-used if it already exists, speeding up processing.
+	const char * output_extension;
 	void (* mode_opening) (FILE * f, string mode);
 	void (* mode_closing) (FILE * f, string mode);
 };
@@ -49,6 +52,7 @@ static const language languages[] = {
 		.tag = "c",
 		.compile = "gcc -include stdio.h -o %1$s.out %1$s",
 		.execute = "./%s.out",
+		.output_extension = ".out",
 		.mode_opening = &c_mode_opening,
 		.mode_closing = &c_mode_closing,
 	},
@@ -56,17 +60,20 @@ static const language languages[] = {
 		.tag = "cpp",
 		.compile = "g++ -include stdio.h -include iostream -o %1$s.out %1$s",
 		.execute = "./%s.out",
+		.output_extension = ".out",
 		.mode_opening = &c_mode_opening,
 		.mode_closing = &c_mode_closing,
 	},
 	{
 		.tag = "py",
-		.execute = "python %s"
+		.execute = "python %s",
+		.output_extension = "",
 	},
 	{
 		.tag = "rs",
 		.compile = "rustc -o %1$s.out --crate-name csp_rs %1$s",
 		.execute = "./%s.out",
+		.output_extension = ".out",
 		.mode_opening = &rs_mode_opening,
 		.mode_closing = &rs_mode_closing,
 	}
@@ -86,7 +93,7 @@ static void show_help(const char * exe_name) {
 	        exe_name);
 }
 
-static void error(char const* fmt, ...) {
+static void error(const char * fmt, ...) {
 	va_list ap;
 	if (isatty(2)) fputs("\033[1m\033[31mfatal: \033[0m", stderr);
 	else fputs("fatal: ", stderr);
@@ -122,8 +129,7 @@ static bool matches_string(FILE * f, const char * str) {
 static int fgets_delims(string& result, FILE * f, const char * delims) {
 	while (1) {
 		int next = fgetc(f);
-		if (next == EOF) return EOF;
-		if (strchr(delims, next)) return next;
+		if (next == EOF || strchr(delims, next)) return next;
 		result += next;
 	}
 }
@@ -149,6 +155,7 @@ static const language * get_lang(FILE * csp, vector<string>& modes) {
 
 void compile_script(path& csp_path, path& outdir, FILE * out) {
 	FILE * csp = open_path(csp_path, "r");
+	int iterations = 0;
 
 	// Execute the program, inserting its output into the CSP file.
 	while (!feof(csp)) {
@@ -157,9 +164,10 @@ void compile_script(path& csp_path, path& outdir, FILE * out) {
 			vector<string> tag_modes;
 			const language * lang = get_lang(csp, tag_modes);
 			if (!lang) continue;
-			path outpath = outdir / csp_path.stem().replace_extension(lang->tag);
+			path outpath = outdir / (string(csp_path.stem()) + std::to_string(iterations++));
+			outpath.replace_extension(lang->tag);
 
-			{ // Extract the script from the CSP file.
+			if (access((string(outpath) + lang->output_extension).c_str(), F_OK)) {
 				FILE * script = open_path(outpath, "w");
 
 				if (lang->opening) fputs(lang->opening, script);
@@ -173,14 +181,19 @@ void compile_script(path& csp_path, path& outdir, FILE * out) {
 				if (lang->closing) fputs(lang->closing, script);
 				if (lang->mode_closing) for (auto& i : tag_modes) lang->mode_closing(script, i);
 				fclose(script);
-			}
 
-			// Compile the script, if needed.
-			if (lang->compile) {
-				char * command;
-				asprintf(&command, lang->compile, outpath.c_str());
-				system(command);
-				free(command);
+				// Compile the script, if needed.
+				if (lang->compile) {
+					char * command;
+					asprintf(&command, lang->compile, outpath.c_str());
+					system(command);
+					free(command);
+				}
+			} else {
+				while (!feof(csp)) {
+					if (matches_string(csp, "<?>")) break;
+					else fgetc(csp);
+				}
 			}
 
 			FILE * script_output;
