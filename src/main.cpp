@@ -1,12 +1,15 @@
 /* A program to embed programming languages into HTML to be used for
  * server-side scripting. Like PHP, but usable. */
 
+#include "fmt/format.h"
 #include <filesystem>
 #include <getopt.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <string>
 #include <string.h>
 #include <vector>
+#include <unistd.h>
 
 using std::filesystem::path;
 using std::string;
@@ -50,29 +53,29 @@ void rs_mode_closing(FILE * f, string mode) {
 static const language languages[] = {
 	{
 		.tag = "c",
-		.compile = "gcc -include stdio.h -o %1$s.out %1$s",
-		.execute = "./%s.out",
+		.compile = "gcc -include stdio.h -o {0}.out {0}",
+		.execute = "./{0}.out {1}",
 		.output_extension = ".out",
 		.mode_opening = &c_mode_opening,
 		.mode_closing = &c_mode_closing,
 	},
 	{
 		.tag = "cpp",
-		.compile = "g++ -include stdio.h -include iostream -o %1$s.out %1$s",
-		.execute = "./%s.out",
+		.compile = "g++ -include stdio.h -include iostream -o {0}.out {0}",
+		.execute = "./{0}.out {1}",
 		.output_extension = ".out",
 		.mode_opening = &c_mode_opening,
 		.mode_closing = &c_mode_closing,
 	},
 	{
 		.tag = "py",
-		.execute = "python %s",
+		.execute = "python {0} {1}",
 		.output_extension = "",
 	},
 	{
 		.tag = "rs",
-		.compile = "rustc -o %1$s.out --crate-name csp_rs %1$s",
-		.execute = "./%s.out",
+		.compile = "rustc -o {0}.out --crate-name csp_rs {0}",
+		.execute = "./{0}.out {1}",
 		.output_extension = ".out",
 		.mode_opening = &rs_mode_opening,
 		.mode_closing = &rs_mode_closing,
@@ -183,12 +186,7 @@ void compile_script(path& csp_path, path& outdir, FILE * out) {
 				fclose(script);
 
 				// Compile the script, if needed.
-				if (lang->compile) {
-					char * command;
-					asprintf(&command, lang->compile, outpath.c_str());
-					system(command);
-					free(command);
-				}
+				if (lang->compile) system(fmt::format(lang->compile, string(outpath)).c_str());
 			} else {
 				while (!feof(csp)) {
 					if (matches_string(csp, "<?>")) break;
@@ -196,13 +194,7 @@ void compile_script(path& csp_path, path& outdir, FILE * out) {
 				}
 			}
 
-			FILE * script_output;
-			{ // Execute the script, dumping its stdout into the output.
-				char * command;
-				asprintf(&command, lang->execute, outpath.c_str());
-				script_output = popen(command, "r");
-				free(command);
-			}
+			FILE * script_output = popen(fmt::format(lang->execute, string(outpath), "hello=world&foo=bar").c_str(), "r");
 
 			// Copy the script output.
 			for (int next = fgetc(script_output); next != EOF;) {
